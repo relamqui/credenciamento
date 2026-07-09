@@ -67,7 +67,7 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
 });
 
 // Serve arquivos estáticos da pasta 'public'
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 // Inicializar Worker do PowerShell Word COM logo na inicialização
 initPowerShellWorker();
