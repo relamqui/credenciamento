@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.DS_Store
+.env
+documentos_assinados/*
+!documentos_assinados/.gitkeep
+templates_temp/*
+!templates_temp/.gitkeep
+*.zip

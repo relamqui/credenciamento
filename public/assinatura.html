@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Assinatura Digital</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Evitar scroll */
+            background-color: #f0f4f8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            min-height: 0;
+        }
+
+        canvas {
+            background-color: white;
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            touch-action: none; /* Previne ações de touch nativas (scroll, pinch) */
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 4 / 1;
+            width: 100%;
+        }
+
+        .footer {
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background-color: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+        }
+
+        .btn-limpar { background-color: #e74c3c; }
+        .btn-limpar:active { background-color: #c0392b; }
+
+        .btn-concluir { background-color: #2ecc71; }
+        .btn-concluir:active { background-color: #27ae60; }
+        .btn-concluir:disabled { background-color: #95a5a6; cursor: not-allowed; }
+
+        /* Overlay de Carregamento */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.92);
+            z-index: 9000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .loading-card {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 32px 28px;
+            width: 85%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            border: 1px solid #334155;
+        }
+        .loading-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .loading-title {
+            color: #f1f5f9;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .loading-subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 24px;
+            min-height: 20px;
+            transition: all 0.3s ease;
+        }
+        .progress-bar-track {
+            background: #334155;
+            border-radius: 100px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            width: 0%;
+            transition: width 0.6s ease;
+        }
+        .loading-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+        }
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #334155;
+            transition: background 0.4s ease;
+        }
+        .step-dot.done { background: #22c55e; }
+        .step-dot.active { background: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.3); }
+        .step-label {
+            font-size: 10px;
+            color: #64748b;
+            transition: color 0.4s;
+        }
+        .step-label.active { color: #94a3b8; }
+        .step-label.done { color: #22c55e; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        Por favor, assine no quadro abaixo
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="signatureCanvas"></canvas>
+    </div>
+
+    <div class="footer">
+        <button class="btn btn-limpar" onclick="clearCanvas()">Limpar</button>
+        <button class="btn btn-concluir" onclick="finishSignature()">Concordar e Assinar</button>
+    </div>
+
+    <!-- Overlay de Bloqueio (PC não está pronto) -->
+    <div id="lockOverlay" style="display: flex; position: fixed; top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.95);z-index:8000;justify-content:center;align-items:center;flex-direction:column;color:white;text-align:center;padding:20px;">
+        <div style="font-size:48px; margin-bottom:15px;">💻</div>
+        <h2 style="margin:0 0 10px 0;">Aguardando PC</h2>
+        <p style="color:#94a3b8; font-size:16px;">Preencha os dados e abra o termo de responsabilidade no computador para liberar a assinatura.</p>
+    </div>
+
+    <!-- Overlay de Carregamento -->
+    <div id="loadingOverlay" style="display: none; position: fixed; top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.92);z-index:9000;justify-content:center;align-items:center;flex-direction:column;">
+        <div class="loading-card">
+            <div class="loading-icon">📄</div>
+            <div class="loading-title">Gerando documento</div>
+            <div class="loading-subtitle" id="loadingMsg">Preparando assinatura...</div>
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="progressFill"></div>
+            </div>
+            <div class="loading-steps">
+                <div class="step">
+                    <div class="step-dot" id="step1dot"></div>
+                    <div class="step-label" id="step1lbl">Assinatura</div>
+                </div>
+                <div class="step">
+                    <div class="step-dot" id="step2dot"></div>
+                    <div class="step-label" id="step2lbl">Documento</div>
+                </div>
+                <div class="step">
+                    <div class="step-dot" id="step3dot"></div>
+                    <div class="step-label" id="step3lbl">PDF Final</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup de Sucesso -->
+    <div id="successPopup" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white;">
+        <div style="background: #2ecc71; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 80%;">
+            <h2 style="margin-top: 0; font-size: 24px;">🎉 Sucesso!</h2>
+            <p style="font-size: 18px;">Assinatura feita e documento gerado.</p>
+            <button onclick="fecharPopup()" style="margin-top: 15px; padding: 12px 25px; border: none; border-radius: 8px; background: white; color: #2ecc71; font-weight: bold; font-size: 16px; cursor: pointer;">OK</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Ajustar tamanho real do canvas para resolução (evita borrão)
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            // Estilos do traço
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#2c3e50';
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        // Pequeno atraso para garantir que o CSS aplicou tamanhos
+        setTimeout(resizeCanvas, 100);
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Suporta touch e mouse
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            // Calcular posições relativas (0 a 1) para escalar corretamente no PC
+            const relativeX = (clientX - rect.left) / rect.width;
+            const relativeY = (clientY - rect.top) / rect.height;
+
+            return { relativeX, relativeY, exactX: clientX - rect.left, exactY: clientY - rect.top };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const coords = getCoordinates(e);
+            lastX = coords.exactX;
+            lastY = coords.exactY;
+            
+            socket.emit('start_stroke', { x: coords.relativeX, y: coords.relativeY });
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+
+            const coords = getCoordinates(e);
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(coords.exactX, coords.exactY);
+            ctx.stroke();
+
+            // Emitir evento via Socket.io enviando a posição RELATIVA atual e anterior
+            const prevRelX = lastX / canvas.width;
+            const prevRelY = lastY / canvas.height;
+
+            socket.emit('draw', {
+                prevX: prevRelX,
+                prevY: prevRelY,
+                currX: coords.relativeX,
+                currY: coords.relativeY
+            });
+
+            lastX = coords.exactX;
+            lastY = coords.exactY;
+        }
+
+        function stopDrawing(e) {
+            if (e) e.preventDefault();
+            isDrawing = false;
+        }
+
+        // Eventos Touch
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
+
+        // Eventos Mouse (para testes no PC)
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Limpar
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            socket.emit('clear');
+        }
+
+        // Evento de recebimento de clear (se o PC limpar)
+        socket.on('clear', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        let isSubmitting = false;
+        // Concluir Assinatura
+        function finishSignature() {
+            if (isSubmitting) return;
+            const isEmpty = isCanvasEmpty();
+            if (isEmpty) {
+                alert('Por favor, faça sua assinatura antes de concluir.');
+                return;
+            }
+
+            const dataUrl = canvas.toDataURL('image/png');
+            isSubmitting = true;
+            socket.emit('signature_done', dataUrl);
+
+            // Mostrar overlay de carregamento com etapas
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.querySelector('.btn-concluir').disabled = true;
+            document.querySelector('.btn-limpar').disabled = true;
+
+            setStep(1);
+        }
+
+        function setStep(n) {
+            const msgs = [
+                'Enviando assinatura...',
+                'Preenchendo o documento...',
+                'Convertendo para PDF...'
+            ];
+            const percents = ['33%', '66%', '90%'];
+            document.getElementById('loadingMsg').innerText = msgs[n - 1];
+            document.getElementById('progressFill').style.width = percents[n - 1];
+            for (let i = 1; i <= 3; i++) {
+                const dot = document.getElementById(`step${i}dot`);
+                const lbl = document.getElementById(`step${i}lbl`);
+                dot.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+                lbl.className = 'step-label' + (i < n ? ' done' : i === n ? ' active' : '');
+            }
+        }
+
+        function isCanvasEmpty() {
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            return !data.some(v => v !== 0);
+        }
+
+        // Gerenciar bloqueio do celular
+        socket.on('modal_status', (isOpen) => {
+            if (isOpen) {
+                document.getElementById('lockOverlay').style.display = 'none';
+            } else {
+                document.getElementById('lockOverlay').style.display = 'flex';
+                clearCanvas(); // Limpa se fechar no PC
+            }
+        });
+
+        // Quando o servidor avisar que o PDF foi assinado
+        socket.on('progress_step', (step) => {
+            setStep(step);
+        });
+
+        socket.on('pdf_signed', () => {
+            // Completa a barra
+            document.getElementById('loadingMsg').innerText = 'Documento pronto!';
+            document.getElementById('progressFill').style.width = '100%';
+            setStep(3);
+            document.getElementById('step3dot').className = 'step-dot done';
+            document.getElementById('step3lbl').className = 'step-label done';
+
+            setTimeout(() => {
+                // Fecha o overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
+
+                // Limpa o canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Reativa botões
+                document.querySelector('.btn-concluir').disabled = false;
+                document.querySelector('.btn-limpar').disabled = false;
+
+                // Mostra o popup de sucesso
+                document.getElementById('successPopup').style.display = 'flex';
+            }, 600);
+        });
+
+        function fecharPopup() {
+            document.getElementById('successPopup').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

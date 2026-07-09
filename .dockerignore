@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.DS_Store
+.git
+.env
+.dockerignore
+Dockerfile
+documentos_assinados/*
+!documentos_assinados/.gitkeep
+templates_temp/*
+!templates_temp/.gitkeep
