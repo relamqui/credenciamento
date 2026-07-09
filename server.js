@@ -182,13 +182,27 @@ io.on('connection', (socket) => {
             const filenamePdf = filenameDocx.replace('.docx', '.pdf');
             const pdfSavePath = path.join(__dirname, 'documentos_assinados', filenamePdf);
             
-            console.log('Convertendo para PDF via Word COM...');
-            await convertToPdf(docxSavePath, pdfSavePath).catch(err => {
-                console.error("Erro na conversão PDF (Word):", err);
-                throw err;
+            // --- Gera o PDF diretamente do HTML via Puppeteer (sem LibreOffice) ---
+            console.log('Gerando PDF via Puppeteer (HTML)...');
+            let htmlTemplatePath = path.join(__dirname, 'templates', 'termo_de_responsabilidade.html');
+            let htmlContent = fs.readFileSync(htmlTemplatePath, 'utf8');
+            htmlContent = htmlContent
+                .replace(/\{\{\$dia\}\}/g, day)
+                .replace(/\{\{\$nome\}\}/g, currentSessionData.nome || 'Nome não informado')
+                .replace(/\{\{\$cpf\}\}/g, currentSessionData.cpf || 'CPF não informado')
+                .replace(/\{%assinatura\}/g, `<img src="${base64Image}" style="max-height:80px; max-width:250px; display:block; margin:0 auto;">`);
+
+            const browser = await puppeteer.launch({
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                headless: true
             });
+            const page = await browser.newPage();
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+            await page.pdf({ path: pdfSavePath, format: 'A4', printBackground: true, margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' } });
+            await browser.close();
             console.log('PDF gerado com sucesso em:', pdfSavePath);
-            
+
             // Upload para MinIO
             console.log('Enviando para o MinIO...');
             try {
@@ -199,12 +213,12 @@ io.on('connection', (socket) => {
             } catch (err) {
                 console.error('Erro no upload para o MinIO:', err);
             }
-            
+
             socket.emit('pdf_signed', filenamePdf); // celular
             if (globalPcSocketId) {
                 io.to(globalPcSocketId).emit('pdf_signed', filenamePdf); // pc
             }
-            
+
         } catch (error) {
             console.error('Erro ao gerar arquivo final:', error);
         }
