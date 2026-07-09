@@ -128,18 +128,26 @@ function convertToPdf(docxPath, pdfPath) {
 
         } else {
             const { exec } = require('child_process');
-            const outDir = path.dirname(pdfPath);
-            const cmd = `soffice --headless --invisible --nologo --nodefault --nofirststartwizard --norestore "-env:UserInstallation=file:///tmp/LibreOffice_Conversion_${Date.now()}" --convert-to pdf "${docxPath}" --outdir "${outDir}"`;
-            exec(cmd, { timeout: 60000 }, (error, stdout) => {
+            const tmpOutDir = os.tmpdir();
+            const cmd = `soffice --headless --invisible --nologo --nodefault --nofirststartwizard --norestore "-env:UserInstallation=file:///tmp/LibreOffice_Conversion_${Date.now()}" --convert-to pdf "${docxPath}" --outdir "${tmpOutDir}"`;
+            
+            exec(cmd, { timeout: 90000 }, (error, stdout) => {
                 if (error) {
                     console.error("Erro via LibreOffice:", error);
                     return reject(error);
                 }
-                const generatedPdfPath = path.join(outDir, path.basename(docxPath, '.docx') + '.pdf');
-                if (generatedPdfPath !== pdfPath) {
-                    fs.renameSync(generatedPdfPath, pdfPath);
+                const generatedPdfPath = path.join(tmpOutDir, path.basename(docxPath, '.docx') + '.pdf');
+                try {
+                    if (fs.existsSync(generatedPdfPath)) {
+                        fs.copyFileSync(generatedPdfPath, pdfPath);
+                        fs.unlinkSync(generatedPdfPath);
+                        resolve(pdfPath);
+                    } else {
+                        reject(new Error("LibreOffice completou sem erro, mas o PDF não foi encontrado em " + generatedPdfPath));
+                    }
+                } catch (e) {
+                    reject(e);
                 }
-                resolve(pdfPath);
             });
         }
     });
