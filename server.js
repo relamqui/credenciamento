@@ -11,6 +11,16 @@ const Minio = require('minio');
 const multer = require('multer');
 const mammoth = require('mammoth');
 const puppeteer = require('puppeteer');
+const { Pool } = require('pg');
+
+// Configuração do Pool PostgreSQL
+const pgPool = new Pool({
+    user: 'wpcrm_user',
+    host: '148.230.77.81',
+    database: 'eventossysten',
+    password: 'TROQUE_POR_SENHA_FORTE',
+    port: 8080,
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -68,6 +78,145 @@ app.post('/api/upload-template', upload.single('template'), async (req, res) => 
 
 // Serve arquivos estáticos da pasta 'public'
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+app.use(express.json());
+
+// API: Listar todos os convidados agrupados por formando (de todas as tabelas de formatura)
+app.get('/api/convidados', async (req, res) => {
+    const client = await pgPool.connect();
+    try {
+        // Busca dinamicamente todas as tabelas que começam com 'formatura'
+        const tablesResult = await client.query(`
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name ILIKE 'formatura%'
+            ORDER BY table_name;
+        `);
+
+        const eventos = [];
+
+        for (const tableRow of tablesResult.rows) {
+            const tableName = tableRow.table_name;
+            const eventName = tableName.replace(/^formatura\s*-?\s*/i, '').trim() || tableName;
+
+            // Busca todos os registros da tabela
+            const rows = await client.query(`SELECT * FROM "${tableName}" ORDER BY id`);
+
+            // Separa formandos e convidados
+            const formandos = rows.rows.filter(r => r.cargo === 'formando');
+            const convidados = rows.rows.filter(r => r.cargo === 'convidado');
+
+            // Agrupa: para cada formando, lista seus convidados
+            const formandosComConvidados = formandos.map(formando => ({
+                id: formando.id,
+                nome: formando.nome,
+                cpf: formando.documento,
+                numero: formando.numero,
+                escola: formando.escola,
+                mesa: formando.mesa,
+                status: formando.status,
+                convidados: convidados.filter(c => c.cpf_formando === formando.documento).map(c => ({
+                    id: c.id,
+                    nome: c.nome,
+                    documento: c.documento,
+                    mesa: c.mesa,
+                    status: c.status,
+                    token: c.token,
+                }))
+            }));
+
+            // Convidados sem formando vinculado
+            const cpfsFormandos = new Set(formandos.map(f => f.documento));
+            const convidadosSemFormando = convidados.filter(c => !cpfsFormandos.has(c.cpf_formando)).map(c => ({
+                id: c.id,
+                nome: c.nome,
+                documento: c.documento,
+                mesa: c.mesa,
+                status: c.status,
+                token: c.token,
+            }));
+
+            eventos.push({
+                evento: eventName,
+                tabela: tableName,
+                totalFormandos: formandos.length,
+                totalConvidados: convidados.length,
+                formandos: formandosComConvidados,
+                convidadosSemVinculo: convidadosSemFormando,
+            });
+        }
+
+        res.json({ success: true, eventos });
+    } catch (err) {
+        console.error('Erro ao buscar convidados:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+// API: Adicionar novo convidado
+app.post('/api/convidados', async (req, res) => {
+    const { tabela, nome, documento, cpf_formando, escola, numero } = req.body;
+    if (!tabela || !nome || !documento || !cpf_formando) {
+        return res.status(400).json({ success: false, error: 'Campos obrigatórios: tabela, nome, documento, cpf_formando' });
+    }
+    const client = await pgPool.connect();
+    try {
+        const result = await client.query(
+            `INSERT INTO "${tabela}" (escola, nome, cargo, numero, documento, status, cpf_formando, "createdAt", "updatedAt")
+             VALUES ($1, $2, 'convidado', $3, $4, 'nao_enviado', $5, NOW(), NOW()) RETURNING *`,
+            [escola || '', nome, numero || '', documento, cpf_formando]
+        );
+        res.json({ success: true, convidado: result.rows[0] });
+    } catch (err) {
+        console.error('Erro ao adicionar convidado:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+// API: Editar convidado (atualiza nome, documento e seta status = nao_enviado)
+app.put('/api/convidados', async (req, res) => {
+    const { tabela, id, nome, documento } = req.body;
+    if (!tabela || !id || !nome || !documento) {
+        return res.status(400).json({ success: false, error: 'Campos obrigatórios: tabela, id, nome, documento' });
+    }
+    const client = await pgPool.connect();
+    try {
+        const result = await client.query(
+            `UPDATE "${tabela}" SET nome = $1, documento = $2, status = 'nao_enviado', "updatedAt" = NOW() WHERE id = $3 RETURNING *`,
+            [nome, documento, id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Convidado não encontrado' });
+        res.json({ success: true, convidado: result.rows[0] });
+    } catch (err) {
+        console.error('Erro ao editar convidado:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+// API: Excluir convidado
+app.delete('/api/convidados', async (req, res) => {
+    const { tabela, id } = req.body;
+    if (!tabela || !id) {
+        return res.status(400).json({ success: false, error: 'Campos obrigatórios: tabela, id' });
+    }
+    const client = await pgPool.connect();
+    try {
+        const result = await client.query(`DELETE FROM "${tabela}" WHERE id = $1`, [id]);
+        if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Convidado não encontrado' });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Erro ao excluir convidado:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
 
 // Inicializar Worker do PowerShell Word COM logo na inicialização
 initPowerShellWorker();

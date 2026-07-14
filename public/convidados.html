@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Convidados por Formando</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #050911;
+            --bg-secondary: #0d1524;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2540;
+            --border: #1e2d47;
+            --border-light: #2a3f5e;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #475569;
+            --shadow: 0 4px 24px rgba(0,0,0,.5);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family:'Inter','Segoe UI',sans-serif;
+            background:var(--bg-primary);
+            color:var(--text-primary);
+            min-height:100vh;
+        }
+
+        /* ===== HEADER ===== */
+        .page-header {
+            background:linear-gradient(135deg,#0d1524,#111827);
+            border-bottom:1px solid var(--border);
+            padding:20px 32px;
+            display:flex; align-items:center; justify-content:space-between;
+            position:sticky; top:0; z-index:100;
+        }
+        .header-left { display:flex; align-items:center; gap:14px; }
+        .header-icon {
+            width:46px; height:46px; border-radius:12px;
+            background:linear-gradient(135deg,var(--accent-purple),var(--accent-blue));
+            display:flex; align-items:center; justify-content:center;
+            font-size:20px; box-shadow:0 0 20px rgba(139,92,246,.3);
+        }
+        .header-text h1 { font-size:20px; font-weight:700; }
+        .header-text p  { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+        .btn-atualizar {
+            display:flex; align-items:center; gap:8px;
+            background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+            color:#fff; border:none; padding:10px 20px; border-radius:10px;
+            font-family:'Inter',sans-serif; font-size:14px; font-weight:600;
+            cursor:pointer; transition:all .3s;
+            box-shadow:0 4px 15px rgba(59,130,246,.3);
+        }
+        .btn-atualizar:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(59,130,246,.5); }
+
+        /* ===== STATS ===== */
+        .stats-bar {
+            display:none; flex-wrap:wrap; gap:12px;
+            padding:16px 32px; border-bottom:1px solid var(--border);
+            background:var(--bg-secondary);
+        }
+        .stat-chip {
+            display:flex; align-items:center; gap:8px;
+            background:var(--bg-card); border:1px solid var(--border);
+            padding:6px 14px; border-radius:999px;
+            font-size:13px; font-weight:500; color:var(--text-secondary);
+        }
+        .stat-chip .sv { color:var(--text-primary); font-weight:700; }
+        .stat-dot { width:8px; height:8px; border-radius:50%; }
+
+        /* ===== SEARCH ===== */
+        .search-bar { display:none; padding:14px 32px; background:var(--bg-secondary); }
+        .search-input-wrap { position:relative; max-width:440px; }
+        .search-icon {
+            position:absolute; left:13px; top:50%; transform:translateY(-50%);
+            color:var(--text-muted); font-size:15px; pointer-events:none;
+        }
+        #searchInput {
+            width:100%; padding:11px 12px 11px 40px;
+            background:var(--bg-card); border:1px solid var(--border);
+            border-radius:10px; color:var(--text-primary);
+            font-family:'Inter',sans-serif; font-size:14px; transition:all .3s;
+        }
+        #searchInput:focus { outline:none; border-color:var(--accent-blue); box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+        #searchInput::placeholder { color:var(--text-muted); }
+
+        /* ===== MAIN ===== */
+        .main-content { padding:24px 32px; max-width:1200px; margin:0 auto; }
+
+        /* ===== EVENTO ===== */
+        .evento-section { margin-bottom:28px; animation:fadeInUp .4s ease both; }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+        .evento-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:16px 22px;
+            background:linear-gradient(135deg,#1a2540,#141e33);
+            border:1px solid var(--border); border-radius:14px 14px 0 0;
+            cursor:pointer; user-select:none; transition:all .2s;
+        }
+        .evento-header:hover { background:linear-gradient(135deg,#1e2d4e,#182238); border-color:var(--border-light); }
+        .evento-header-left { display:flex; align-items:center; gap:12px; }
+        .evento-icon { font-size:24px; }
+        .evento-nome { font-size:17px; font-weight:700; }
+        .evento-sub  { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+        .evento-badges { display:flex; gap:8px; align-items:center; }
+        .badge { padding:3px 11px; border-radius:999px; font-size:12px; font-weight:600; }
+        .badge-formando  { background:rgba(59,130,246,.15); color:#60a5fa; border:1px solid rgba(59,130,246,.3); }
+        .badge-convidado { background:rgba(16,185,129,.15); color:#34d399; border:1px solid rgba(16,185,129,.3); }
+        .chevron { font-size:16px; color:var(--text-muted); transition:transform .3s; }
+        .evento-section.open .chevron { transform:rotate(180deg); }
+        .evento-body { display:none; border:1px solid var(--border); border-top:none; border-radius:0 0 14px 14px; overflow:hidden; }
+        .evento-section.open .evento-body { display:block; }
+
+        /* ===== FORMANDO ===== */
+        .formando-card { border-bottom:1px solid var(--border); }
+        .formando-card:last-child { border-bottom:none; }
+        .formando-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:14px 20px; background:var(--bg-card);
+            cursor:pointer; user-select:none; transition:background .2s;
+        }
+        .formando-header:hover { background:var(--bg-card-hover); }
+        .formando-left { display:flex; align-items:center; gap:12px; }
+        .formando-avatar {
+            width:40px; height:40px; border-radius:50%; flex-shrink:0;
+            background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+            display:flex; align-items:center; justify-content:center;
+            font-weight:700; font-size:15px; color:#fff;
+        }
+        .formando-nome { font-size:15px; font-weight:600; }
+        .formando-cpf  { font-size:11px; color:var(--text-muted); margin-top:2px; font-family:'Courier New',monospace; }
+        .formando-right { display:flex; align-items:center; gap:10px; }
+        .num-convidados {
+            display:flex; align-items:center; gap:5px;
+            background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.25);
+            color:#34d399; padding:3px 11px; border-radius:999px;
+            font-size:12px; font-weight:600;
+        }
+        .status-pill {
+            padding:3px 9px; border-radius:999px;
+            font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px;
+        }
+        .status-enviado    { background:rgba(59,130,246,.15); color:#60a5fa; }
+        .status-pendente   { background:rgba(245,158,11,.15);  color:#fcd34d; }
+        .status-assinado   { background:rgba(16,185,129,.15);  color:#34d399; }
+        .status-nao_enviado{ background:rgba(239,68,68,.15);   color:#f87171; }
+        .formando-chevron  { font-size:14px; color:var(--text-muted); transition:transform .3s; }
+        .formando-card.open .formando-chevron { transform:rotate(180deg); }
+
+        /* ===== CONVIDADOS LIST ===== */
+        .convidados-list { display:none; background:#0a1020; padding:10px 20px 14px 76px; border-top:1px solid var(--border); }
+        .formando-card.open .convidados-list { display:block; animation:slideDown .22s ease; }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+        .convidado-row {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:9px 14px; margin-bottom:6px;
+            background:var(--bg-card); border:1px solid var(--border);
+            border-radius:10px; transition:all .2s;
+        }
+        .convidado-row:last-of-type { margin-bottom:0; }
+        .convidado-row:hover { border-color:var(--border-light); background:var(--bg-card-hover); transform:translateX(3px); }
+        .convidado-left { display:flex; align-items:center; gap:10px; }
+        .convidado-avatar {
+            width:32px; height:32px; border-radius:50%;
+            background:linear-gradient(135deg,#1e3a5f,#1a2d4e);
+            border:1px solid var(--border-light);
+            display:flex; align-items:center; justify-content:center;
+            font-size:11px; font-weight:700; color:#60a5fa; flex-shrink:0;
+        }
+        .convidado-nome { font-size:14px; font-weight:500; }
+        .convidado-doc  { font-size:11px; color:var(--text-muted); font-family:'Courier New',monospace; }
+        .convidado-right { display:flex; align-items:center; gap:6px; }
+        .mesa-chip {
+            display:flex; align-items:center; gap:3px;
+            padding:3px 9px; background:rgba(139,92,246,.1);
+            border:1px solid rgba(139,92,246,.25); border-radius:999px;
+            font-size:11px; color:#a78bfa; font-weight:500;
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .btn-action {
+            display:flex; align-items:center; justify-content:center;
+            width:28px; height:28px; border-radius:8px; border:none;
+            cursor:pointer; font-size:13px; transition:all .2s;
+        }
+        .btn-edit   { background:rgba(59,130,246,.15); color:#60a5fa; }
+        .btn-edit:hover { background:rgba(59,130,246,.3); transform:scale(1.1); }
+        .btn-delete { background:rgba(239,68,68,.12); color:#f87171; }
+        .btn-delete:hover { background:rgba(239,68,68,.28); transform:scale(1.1); }
+
+        /* Botão adicionar convidado */
+        .btn-add-convidado {
+            display:flex; align-items:center; gap:6px;
+            margin-top:10px; padding:8px 16px;
+            background:rgba(16,185,129,.1); border:1px dashed rgba(16,185,129,.35);
+            border-radius:10px; color:#34d399;
+            font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+            cursor:pointer; transition:all .2s; width:100%;
+            justify-content:center;
+        }
+        .btn-add-convidado:hover { background:rgba(16,185,129,.2); border-color:rgba(16,185,129,.6); }
+
+        .sem-convidados { text-align:center; padding:18px; color:var(--text-muted); font-size:13px; font-style:italic; }
+
+        /* ===== LOADING / ERROR / EMPTY ===== */
+        .loading-state,.error-state,.empty-state {
+            display:flex; flex-direction:column; align-items:center;
+            justify-content:center; padding:70px 32px; gap:14px; text-align:center;
+        }
+        .error-state,.empty-state { display:none; }
+        .spinner { width:46px; height:46px; border:3px solid var(--border); border-top-color:var(--accent-blue); border-radius:50%; animation:spin .8s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .loading-text { color:var(--text-secondary); font-size:15px; }
+        .error-icon,.empty-icon { font-size:48px; }
+        .error-title { font-size:17px; font-weight:600; color:var(--accent-red); }
+        .error-msg,.empty-title { font-size:14px; color:var(--text-secondary); max-width:400px; }
+
+        /* ===== MODAL ===== */
+        .modal-backdrop {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+            z-index:1000; align-items:center; justify-content:center;
+        }
+        .modal-backdrop.show { display:flex; }
+        .modal-box {
+            background:#131e32; border:1px solid var(--border-light);
+            border-radius:16px; padding:32px; width:90%; max-width:420px;
+            box-shadow:0 20px 60px rgba(0,0,0,.7);
+            animation:modalIn .25s ease;
+        }
+        @keyframes modalIn { from{opacity:0;transform:translateY(-20px) scale(.97)} to{opacity:1;transform:none} }
+        .modal-title {
+            font-size:18px; font-weight:700; margin-bottom:6px;
+            display:flex; align-items:center; gap:10px;
+        }
+        .modal-sub { font-size:13px; color:var(--text-secondary); margin-bottom:24px; }
+        .modal-field { margin-bottom:16px; }
+        .modal-field label { display:block; font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; margin-bottom:6px; letter-spacing:.5px; }
+        .modal-field input {
+            width:100%; padding:11px 14px;
+            background:#0d1524; border:1px solid var(--border-light);
+            border-radius:10px; color:var(--text-primary);
+            font-family:'Inter',sans-serif; font-size:14px; transition:all .2s;
+        }
+        .modal-field input:focus { outline:none; border-color:var(--accent-blue); box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+        .modal-actions { display:flex; gap:10px; margin-top:24px; }
+        .btn-modal-cancel {
+            flex:1; padding:11px; border-radius:10px; border:1px solid var(--border-light);
+            background:transparent; color:var(--text-secondary);
+            font-family:'Inter',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s;
+        }
+        .btn-modal-cancel:hover { background:var(--bg-card); color:var(--text-primary); }
+        .btn-modal-confirm {
+            flex:2; padding:11px; border-radius:10px; border:none;
+            background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));
+            color:#fff; font-family:'Inter',sans-serif; font-size:14px; font-weight:700;
+            cursor:pointer; transition:all .2s;
+        }
+        .btn-modal-confirm:hover { opacity:.9; transform:translateY(-1px); }
+        .btn-modal-confirm.danger { background:linear-gradient(135deg,#dc2626,#b91c1c); }
+        .btn-modal-confirm:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+        .modal-error { font-size:12px; color:#f87171; margin-top:8px; display:none; }
+
+        @media(max-width:640px) {
+            .page-header,.stats-bar,.search-bar,.main-content { padding-left:14px; padding-right:14px; }
+            .convidados-list { padding-left:14px; }
+            .evento-badges { display:none; }
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- Header -->
+<header class="page-header">
+    <div class="header-left">
+        <div class="header-icon">👥</div>
+        <div class="header-text">
+            <h1>Lista de Convidados</h1>
+            <p>Gerenciar convidados por formando</p>
+        </div>
+    </div>
+    <button class="btn-atualizar" onclick="carregarDados()">
+        <span id="refreshIcon">🔄</span> Atualizar
+    </button>
+</header>
+
+<!-- Stats Bar -->
+<div class="stats-bar" id="statsBar">
+    <div class="stat-chip"><div class="stat-dot" style="background:#818cf8"></div>Eventos: <span class="sv" id="statEventos">0</span></div>
+    <div class="stat-chip"><div class="stat-dot" style="background:#60a5fa"></div>Formandos: <span class="sv" id="statFormandos">0</span></div>
+    <div class="stat-chip"><div class="stat-dot" style="background:#34d399"></div>Convidados: <span class="sv" id="statConvidados">0</span></div>
+    <div class="stat-chip"><div class="stat-dot" style="background:#f59e0b"></div>Total: <span class="sv" id="statTotal">0</span></div>
+</div>
+
+<!-- Search -->
+<div class="search-bar" id="searchBar">
+    <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Buscar por nome, CPF ou documento..." oninput="filtrar()">
+    </div>
+</div>
+
+<!-- Content -->
+<main class="main-content" id="mainContent">
+    <div class="loading-state" id="loadingState">
+        <div class="spinner"></div>
+        <p class="loading-text">Buscando dados do banco de dados...</p>
+    </div>
+    <div class="error-state" id="errorState">
+        <div class="error-icon">⚠️</div>
+        <div class="error-title">Erro ao carregar dados</div>
+        <div class="error-msg" id="errorMsg">Não foi possível conectar ao servidor.</div>
+    </div>
+    <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">Nenhum evento de formatura encontrado</div>
+    </div>
+    <div id="eventosContainer"></div>
+</main>
+
+<!-- ===== MODAL ===== -->
+<div class="modal-backdrop" id="modal">
+    <div class="modal-box">
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-sub" id="modalSub"></div>
+        <div id="modalBody"></div>
+        <div class="modal-actions">
+            <button class="btn-modal-cancel" onclick="fecharModal()">Cancelar</button>
+            <button class="btn-modal-confirm" id="modalConfirmBtn" onclick="modalConfirm()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ─── Helpers ───────────────────────────────────────────────────────────────
+function getIniciais(nome) {
+    if (!nome) return '?';
+    const p = nome.trim().split(' ').filter(Boolean);
+    return p.length === 1 ? p[0][0].toUpperCase() : (p[0][0] + p[p.length-1][0]).toUpperCase();
+}
+function formatCpf(cpf) {
+    if (!cpf) return '—';
+    const c = cpf.replace(/\D/g,'');
+    return c.length === 11 ? c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : cpf;
+}
+function maskCpf(el) {
+    let v = el.value.replace(/\D/g,'').slice(0,11);
+    v = v.replace(/(\d{3})(\d)/,'$1.$2')
+         .replace(/(\d{3})(\d)/,'$1.$2')
+         .replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+    el.value = v;
+}
+function getStatusClass(s) {
+    if (!s) return 'status-pendente';
+    const m = { enviado:'status-enviado', assinado:'status-assinado', nao_enviado:'status-nao_enviado' };
+    return m[s.toLowerCase()] || 'status-pendente';
+}
+
+// ─── Modal ──────────────────────────────────────────────────────────────────
+let _modalAction = null;
+
+// Mapa global: chave = "c_ID" para convidado, "f_ID" para formando
+const _store = {};
+
+function fecharModal() {
+    document.getElementById('modal').classList.remove('show');
+    _modalAction = null;
+}
+
+function abrirModal({ icon, title, sub, body, confirmLabel, danger, onConfirm }) {
+    document.getElementById('modalTitle').innerHTML = `${icon} ${title}`;
+    document.getElementById('modalSub').textContent   = sub || '';
+    document.getElementById('modalBody').innerHTML    = body || '';
+    const btn = document.getElementById('modalConfirmBtn');
+    btn.textContent = confirmLabel || 'Confirmar';
+    btn.className   = 'btn-modal-confirm' + (danger ? ' danger' : '');
+    btn.disabled    = false;
+    _modalAction = onConfirm;
+    document.getElementById('modal').classList.add('show');
+}
+
+async function modalConfirm() {
+    if (!_modalAction) return;
+    const btn = document.getElementById('modalConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Aguarde...';
+    await _modalAction();
+}
+
+// ─── Adicionar convidado ─────────────────────────────────────────────────────
+// storeKey = "f_ID" do formando
+function abrirAdicionarConvidado(storeKey) {
+    const fd = _store[storeKey];
+    if (!fd) return;
+    abrirModal({
+        icon: '➕', title: 'Adicionar Convidado',
+        sub: `Formando: ${fd.nome} — CPF ${formatCpf(fd.cpf)}`,
+        body: `
+            <div class="modal-field">
+                <label>Nome Completo</label>
+                <input type="text" id="mNome" placeholder="Nome do convidado" autocomplete="off">
+            </div>
+            <div class="modal-field">
+                <label>CPF do Convidado</label>
+                <input type="text" id="mDoc" placeholder="000.000.000-00" maxlength="14" oninput="maskCpf(this)" autocomplete="off">
+            </div>
+            <div class="modal-error" id="mErr"></div>
+        `,
+        confirmLabel: 'Adicionar',
+        onConfirm: async () => {
+            const nome  = document.getElementById('mNome').value.trim();
+            const doc   = document.getElementById('mDoc').value.trim();
+            const errEl = document.getElementById('mErr');
+            if (!nome || !doc) {
+                errEl.textContent = 'Preencha todos os campos.';
+                errEl.style.display = 'block';
+                document.getElementById('modalConfirmBtn').disabled = false;
+                document.getElementById('modalConfirmBtn').textContent = 'Adicionar';
+                return;
+            }
+            const res  = await fetch('/api/convidados', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ tabela: fd.tabela, nome, documento: doc.replace(/\D/g,''), cpf_formando: fd.cpf, escola: fd.escola, numero: fd.numero })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                errEl.textContent = data.error || 'Erro ao adicionar.';
+                errEl.style.display = 'block';
+                document.getElementById('modalConfirmBtn').disabled = false;
+                document.getElementById('modalConfirmBtn').textContent = 'Adicionar';
+                return;
+            }
+            fecharModal();
+            carregarDados();
+        }
+    });
+}
+
+// ─── Editar convidado ────────────────────────────────────────────────────────
+// storeKey = "c_ID" do convidado
+function abrirEditarConvidado(storeKey) {
+    const cv = _store[storeKey];
+    if (!cv) return;
+    abrirModal({
+        icon: '✏️', title: 'Editar Convidado',
+        sub: 'O status será alterado para nao_enviado para reenvio do convite.',
+        body: `
+            <div class="modal-field">
+                <label>Novo Nome</label>
+                <input type="text" id="mNome" autocomplete="off">
+            </div>
+            <div class="modal-field">
+                <label>Novo CPF</label>
+                <input type="text" id="mDoc" maxlength="14" oninput="maskCpf(this)" autocomplete="off">
+            </div>
+            <div class="modal-error" id="mErr"></div>
+        `,
+        confirmLabel: 'Salvar Alterações',
+        onConfirm: async () => {
+            const nome  = document.getElementById('mNome').value.trim();
+            const doc   = document.getElementById('mDoc').value.trim();
+            const errEl = document.getElementById('mErr');
+            if (!nome || !doc) {
+                errEl.textContent = 'Preencha todos os campos.';
+                errEl.style.display = 'block';
+                document.getElementById('modalConfirmBtn').disabled = false;
+                document.getElementById('modalConfirmBtn').textContent = 'Salvar Alterações';
+                return;
+            }
+            const res  = await fetch('/api/convidados', {
+                method: 'PUT', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ tabela: cv.tabela, id: cv.id, nome, documento: doc.replace(/\D/g,'') })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                errEl.textContent = data.error || 'Erro ao editar.';
+                errEl.style.display = 'block';
+                document.getElementById('modalConfirmBtn').disabled = false;
+                document.getElementById('modalConfirmBtn').textContent = 'Salvar Alterações';
+                return;
+            }
+            fecharModal();
+            carregarDados();
+        }
+    });
+    // Preencher os campos APÓS o modal ser inserido no DOM
+    setTimeout(() => {
+        const nomeEl = document.getElementById('mNome');
+        const docEl  = document.getElementById('mDoc');
+        if (nomeEl) nomeEl.value = cv.nome;
+        if (docEl)  docEl.value  = formatCpf(cv.documento);
+    }, 30);
+}
+
+// ─── Excluir convidado ───────────────────────────────────────────────────────
+// storeKey = "c_ID" do convidado
+function abrirExcluirConvidado(storeKey) {
+    const cv = _store[storeKey];
+    if (!cv) return;
+    abrirModal({
+        icon: '🗑️', title: 'Excluir Convidado',
+        sub: `Tem certeza que deseja excluir permanentemente "${cv.nome}"? Esta ação não pode ser desfeita.`,
+        confirmLabel: 'Sim, Excluir',
+        danger: true,
+        onConfirm: async () => {
+            const res  = await fetch('/api/convidados', {
+                method: 'DELETE', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ tabela: cv.tabela, id: cv.id })
+            });
+            const data = await res.json();
+            if (!data.success) { alert('Erro ao excluir: ' + (data.error || 'Erro desconhecido')); fecharModal(); return; }
+            fecharModal();
+            carregarDados();
+        }
+    });
+}
+
+// ─── Toggles ─────────────────────────────────────────────────────────────────
+function toggleEvento(el)   { el.closest('.evento-section').classList.toggle('open'); }
+function toggleFormando(el) { el.closest('.formando-card').classList.toggle('open'); }
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function renderizarDados(eventos) {
+    const container = document.getElementById('eventosContainer');
+    container.innerHTML = '';
+    if (!eventos || eventos.length === 0) { document.getElementById('emptyState').style.display='flex'; return; }
+
+    let totalF=0, totalC=0;
+    eventos.forEach((evento, idx) => {
+        totalF += evento.totalFormandos;
+        totalC += evento.totalConvidados;
+
+        const section = document.createElement('div');
+        section.className = 'evento-section open';
+        section.style.animationDelay = `${idx * 0.07}s`;
+        section.dataset.evento = evento.evento.toLowerCase();
+
+        const formandosHtml = evento.formandos.map(f => {
+            const fKey = `f_${f.id}`;
+            _store[fKey] = { tabela: evento.tabela, id: f.id, nome: f.nome, cpf: f.cpf, escola: f.escola, numero: f.numero };
+            const ini = getIniciais(f.nome);
+            const convHtml = f.convidados.length > 0
+                ? f.convidados.map(c => {
+                    const cKey = `c_${c.id}`;
+                    _store[cKey] = { tabela: evento.tabela, id: c.id, nome: c.nome, documento: c.documento || '' };
+                    return `
+                    <div class="convidado-row" data-nome="${c.nome.toLowerCase()}" data-doc="${(c.documento||'').toLowerCase()}">
+                        <div class="convidado-left">
+                            <div class="convidado-avatar">${getIniciais(c.nome)}</div>
+                            <div>
+                                <div class="convidado-nome">${c.nome}</div>
+                                <div class="convidado-doc">${formatCpf(c.documento)}</div>
+                            </div>
+                        </div>
+                        <div class="convidado-right">
+                            ${c.mesa ? `<div class="mesa-chip">🪑 Mesa ${c.mesa}</div>` : ''}
+                            <span class="status-pill ${getStatusClass(c.status)}">${c.status || 'Pendente'}</span>
+                            <button class="btn-action btn-edit" title="Editar" data-key="${cKey}" onclick="event.stopPropagation();abrirEditarConvidado(this.dataset.key)">✏️</button>
+                            <button class="btn-action btn-delete" title="Excluir" data-key="${cKey}" onclick="event.stopPropagation();abrirExcluirConvidado(this.dataset.key)">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                }).join('')
+                : '<div class="sem-convidados">Nenhum convidado cadastrado.</div>';
+
+            return `
+                <div class="formando-card open" data-nome="${f.nome.toLowerCase()}" data-cpf="${(f.cpf||'').toLowerCase()}">
+                    <div class="formando-header" onclick="toggleFormando(this)">
+                        <div class="formando-left">
+                            <div class="formando-avatar">${ini}</div>
+                            <div>
+                                <div class="formando-nome">${f.nome}</div>
+                                <div class="formando-cpf">${formatCpf(f.cpf)}</div>
+                            </div>
+                        </div>
+                        <div class="formando-right">
+                            <div class="num-convidados">👥 ${f.convidados.length} convidado${f.convidados.length!==1?'s':''}</div>
+                            ${f.mesa ? `<div class="mesa-chip">🪑 Mesa ${f.mesa}</div>` : ''}
+                            <span class="status-pill ${getStatusClass(f.status)}">${f.status||'Pendente'}</span>
+                            <span class="formando-chevron">▾</span>
+                        </div>
+                    </div>
+                    <div class="convidados-list">
+                        ${convHtml}
+                        <button class="btn-add-convidado" data-key="${fKey}" onclick="abrirAdicionarConvidado(this.dataset.key)">
+                            ➕ Adicionar Convidado
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        section.innerHTML = `
+            <div class="evento-header" onclick="toggleEvento(this)">
+                <div class="evento-header-left">
+                    <div class="evento-icon">🎓</div>
+                    <div>
+                        <div class="evento-nome">${evento.evento}</div>
+                        <div class="evento-sub">${evento.tabela}</div>
+                    </div>
+                </div>
+                <div class="evento-badges">
+                    <span class="badge badge-formando">👨‍🎓 ${evento.totalFormandos} formandos</span>
+                    <span class="badge badge-convidado">👥 ${evento.totalConvidados} convidados</span>
+                    <span class="chevron">▾</span>
+                </div>
+            </div>
+            <div class="evento-body">
+                ${formandosHtml || '<div class="sem-convidados" style="padding:20px;">Nenhum formando cadastrado.</div>'}
+            </div>
+        `;
+        container.appendChild(section);
+    });
+
+    document.getElementById('statEventos').textContent  = eventos.length;
+    document.getElementById('statFormandos').textContent = totalF;
+    document.getElementById('statConvidados').textContent= totalC;
+    document.getElementById('statTotal').textContent    = totalF + totalC;
+    document.getElementById('statsBar').style.display   = 'flex';
+    document.getElementById('searchBar').style.display  = 'block';
+}
+
+// ─── Filtro ───────────────────────────────────────────────────────────────────
+function filtrar() {
+    const term = document.getElementById('searchInput').value.toLowerCase().trim();
+    document.querySelectorAll('.evento-section').forEach(ev => {
+        let evVisible = false;
+        ev.querySelectorAll('.formando-card').forEach(card => {
+            const nF = card.dataset.nome||'', cF = card.dataset.cpf||'';
+            let anyC = false;
+            card.querySelectorAll('.convidado-row').forEach(row => {
+                const m = !term || (row.dataset.nome||'').includes(term) || (row.dataset.doc||'').includes(term);
+                row.style.display = m ? '' : 'none';
+                if (m) anyC = true;
+            });
+            const show = !term || nF.includes(term) || cF.includes(term) || anyC;
+            card.style.display = show ? '' : 'none';
+            if (show) { evVisible = true; if (term) card.classList.add('open'); }
+        });
+        ev.style.display = evVisible ? '' : 'none';
+        if (evVisible && term) ev.classList.add('open');
+    });
+}
+
+// ─── Load ─────────────────────────────────────────────────────────────────────
+async function carregarDados() {
+    document.getElementById('loadingState').style.display = 'flex';
+    document.getElementById('errorState').style.display   = 'none';
+    document.getElementById('emptyState').style.display   = 'none';
+    document.getElementById('eventosContainer').innerHTML = '';
+    document.getElementById('statsBar').style.display     = 'none';
+    document.getElementById('searchBar').style.display    = 'none';
+    document.getElementById('refreshIcon').style.animation = 'spin .8s linear infinite';
+    try {
+        const res  = await fetch('/api/convidados');
+        const data = await res.json();
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('refreshIcon').style.animation = '';
+        if (!data.success) throw new Error(data.error||'Erro desconhecido');
+        renderizarDados(data.eventos);
+    } catch(err) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('refreshIcon').style.animation = '';
+        document.getElementById('errorState').style.display = 'flex';
+        document.getElementById('errorMsg').textContent = err.message;
+    }
+}
+
+// Fechar modal clicando fora
+document.getElementById('modal').addEventListener('click', function(e) {
+    if (e.target === this) fecharModal();
+});
+
+// Fechar com ESC
+document.addEventListener('keydown', e => { if (e.key==='Escape') fecharModal(); });
+
+carregarDados();
+</script>
+</body>
+</html>

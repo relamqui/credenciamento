@@ -454,7 +454,10 @@
                     <option value="" disabled selected>Carregando templates...</option>
                 </select>
             </div>
-            <button type="button" class="btn-teste" style="margin-left: 15px; margin-top: 25px;" onclick="abrirModalTemplates()">[+] Gerenciar Templates</button>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-left: 15px; margin-top: 25px;">
+                <button type="button" class="btn-teste" onclick="abrirModalTemplates()">[+] Gerenciar Templates</button>
+                <button type="button" class="btn-teste" style="background-color: #8b5cf6;" onclick="window.open('/convidados.html', '_blank')">👥 Ver Convidados</button>
+            </div>
         </div>
 
         <div class="secao-header">
